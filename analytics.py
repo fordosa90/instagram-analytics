@@ -23,9 +23,6 @@ def validate_config():
     if 'RUN_HOUR' not in config:
         return False
 
-    if 'TIME_FORMAT' not in config:
-        return False
-
     if 'USERNAME' not in config:
         return False
 
@@ -137,7 +134,7 @@ if __name__ == '__main__':
 	while True:
 		# Scheduled, every day
 		if datetime.now().hour == config['RUN_HOUR']:
-			print(datetime.now().strftime(config['TIME_FORMAT'])),
+			print(datetime.now().strftime("%Y-%m-%d")),
 			try:
 				run_analytics()
 				time.sleep(82800) # Sleep for 23 hours
