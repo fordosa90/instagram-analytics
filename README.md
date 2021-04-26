@@ -13,6 +13,15 @@ The collected information:
   * New followers since last run - only available if configured
   * Lost followers since last run - only available if configured
 
+## Side note
+
+Check your installed python version
+`python --version` or `py --version`
+
+Check python interpreter in VS Code
+ - Ctrl+Shift+P
+ - Python: Select Interpreter
+
 ## Requirements
 
 Before the script can be run, you will need to install a few Python dependencies.
