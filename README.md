@@ -28,7 +28,7 @@ Before the script can be run, you will need to install a few Python dependencies
 
 - [BeautifulSoup4](https://pypi.python.org/pypi/beautifulsoup4), for parsing html: `pip install BeautifulSoup4`
 - [Selenium](http://www.seleniumhq.org/), for browser automation: `pip install Selenium`
-- [Chrome WebDriver](https://sites.google.com/a/chromium.org/chromedriver/downloads), as the browser. The binary needs to be put into the same folder as **analytics.py**
+- [Web Driver manager](https://pypi.org/project/webdriver-manager/), for browser management: `pip install webdriver-manager`
 
 ## Configuration
 
@@ -36,5 +36,5 @@ Before you run **analytics.py**, copy the **config.json.example** file, and crea
 
   * USER: the Instagram user to be scraped
   * RUN_HOUR: the hour, at which time the script should run daily
-  * USERNAME: a valid username, if the detailed followers information is also wanted
-  * PASSWORD: a valid password, if the detailed followers information is also wanted
+  * USERNAME: a valid username, if the detailed followers information is also wanted. else leave empty
+  * PASSWORD: a valid password, if the detailed followers information is also wanted. else leave empty

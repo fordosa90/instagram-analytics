@@ -4,12 +4,16 @@
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 from datetime import datetime
+from webdriver_manager.chrome import ChromeDriverManager
 import json
 import time
 import os
 import re
+
 
 config = None
 
@@ -43,20 +47,33 @@ def run_analytics():
 
     # Launch browser
 	options = webdriver.ChromeOptions()
+	#options.add_argument("--headless")
 	options.add_experimental_option('prefs', {'intl.accept_languages': 'en,en_US'})
-	browser = webdriver.Chrome(options=options)
+	options.add_experimental_option('excludeSwitches', ['enable-logging'])
+	service = Service(ChromeDriverManager().install())
+	browser = webdriver.Chrome(service=service, options=options)
 
     # User's profile
 	browser.get('https://instagram.com/' + config['USER'])
-	time.sleep(0.5)
+	time.sleep(1)
 
-    # Soup
+	# Soup
 	soup = BeautifulSoup(browser.page_source, 'html.parser')
 
+	# Accept cookies if have to
+	btn_acceptcookies = soup.html.find('div', {'role':'dialog'}).find('button', string=re.compile('Accept'))
+	if btn_acceptcookies:
+		browser.find_element(By.XPATH, "//*[contains(text(), 'Accept All')]").click()
+		print("Cookies accepted")
+		time.sleep(1.5)
+
+	# Check whether account is private
+	private = True if soup.html.body.find('h2', string=re.compile('Private')) else False
+
 	# User's statistics
-	count_posts     = soup.html.body.span.section.main.div.header.section.ul.findAll('li', recursive=False)[0].a.span.getText()
-	count_followers = soup.html.body.span.section.main.div.header.section.ul.findAll('li', recursive=False)[1].a.span.getText()
-	count_following = soup.html.body.span.section.main.div.header.section.ul.findAll('li', recursive=False)[2].a.span.getText()
+	count_posts		= soup.html.find_all(string=re.compile('posts'))[0].parent.span.getText()
+	count_followers = soup.html.find_all(string=re.compile('followers'))[0].parent.span.getText()
+	count_following = soup.html.find_all(string=re.compile('following'))[0].parent.span.getText()
 
     # Get non public info
 	followers = []
@@ -68,7 +85,6 @@ def run_analytics():
 		browser.find_element_by_xpath('/html/body/span/section/main/div/article/div/div[1]/div/form/div[3]/div/div[1]/input').send_keys(config["PASSWORD"])
 		time.sleep(0.5)
 		browser.find_element_by_xpath('/html/body/span/section/main/div/article/div/div[1]/div/form/div[4]/button').click()
-		time.sleep(8)
 
         # Check followers
 		browser.find_element_by_xpath('/html/body/span/section/main/div/header/section/ul/li[2]/a').click()
@@ -106,7 +122,7 @@ def run_analytics():
 	    json.dump(analytics, f)
 
 	# Quit browser
-	browser.quit()   
+	browser.quit()
 
 
 # ----------------------------------------
