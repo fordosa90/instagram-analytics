@@ -9,9 +9,6 @@ The collected information:
   * Count of posts
   * Count of followers
   * Count of followed accounts
-  * Current list of followers - only available if configured
-  * New followers since last run - only available if configured
-  * Lost followers since last run - only available if configured
 
 ## Side note
 
@@ -36,5 +33,3 @@ Before you run **analytics.py**, copy the **config.json.example** file, and crea
 
   * USER: the Instagram user to be scraped
   * RUN_HOUR: the hour, at which time the script should run daily
-  * USERNAME: a valid username, if the detailed followers information is also wanted. else leave empty
-  * PASSWORD: a valid password, if the detailed followers information is also wanted. else leave empty

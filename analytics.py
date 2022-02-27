@@ -27,12 +27,6 @@ def validate_config():
     if 'RUN_HOUR' not in config:
         return False
 
-    if 'USERNAME' not in config:
-        return False
-
-    if 'PASSWORD' not in config:
-        return False
-
     return True
 
 def run_analytics():
@@ -61,11 +55,13 @@ def run_analytics():
 	soup = BeautifulSoup(browser.page_source, 'html.parser')
 
 	# Accept cookies if have to
-	btn_acceptcookies = soup.html.find('div', {'role':'dialog'}).find('button', string=re.compile('Accept'))
-	if btn_acceptcookies:
-		browser.find_element(By.XPATH, "//*[contains(text(), 'Accept All')]").click()
-		print("Cookies accepted")
-		time.sleep(1.5)
+	dialog_savelogin = True if soup.html.find_all(string=re.compile('(Allow|Accept).*cookies')) else False
+	if dialog_savelogin:
+		try:
+			browser.find_element(By.XPATH, "//*[contains(text(), 'Only allow essential cookies')]").click()
+			time.sleep(1.5)
+		except Exception as e:
+			print ('Could not accept cookies')
 
 	# Check whether account is private
 	private = True if soup.html.body.find('h2', string=re.compile('Private')) else False
@@ -74,36 +70,10 @@ def run_analytics():
 	count_posts		= soup.html.find_all(string=re.compile('posts'))[0].parent.span.getText()
 	count_followers = soup.html.find_all(string=re.compile('followers'))[0].parent.span.getText()
 	count_following = soup.html.find_all(string=re.compile('following'))[0].parent.span.getText()
-
-    # Get non public info
-	followers = []
-	if config["USERNAME"] != "" and config["PASSWORD"] != "":
-		# Log in
-		browser.find_element_by_xpath('/html/body/span/section/nav/div/div[2]/div[2]/div[3]/div/span/a[1]').click()
-		time.sleep(1)
-		browser.find_element_by_xpath('/html/body/span/section/main/div/article/div/div[1]/div/form/div[2]/div/div[1]/input').send_keys(config["USERNAME"])
-		browser.find_element_by_xpath('/html/body/span/section/main/div/article/div/div[1]/div/form/div[3]/div/div[1]/input').send_keys(config["PASSWORD"])
-		time.sleep(0.5)
-		browser.find_element_by_xpath('/html/body/span/section/main/div/article/div/div[1]/div/form/div[4]/button').click()
-
-        # Check followers
-		browser.find_element_by_xpath('/html/body/span/section/main/div/header/section/ul/li[2]/a').click()
-		time.sleep(0.5)
-
-        # Soup
-		children = 0
-		soup = BeautifulSoup(browser.page_source, 'html.parser')
-		while (children != len(soup.html.body.findAll('div', recursive=False)[2].div.findAll('li'))):
-			children = len(soup.html.body.findAll('div', recursive=False)[2].div.findAll('li'))
-			browser.execute_script('object = document.body.children[14].children[1].children[1]; object.scrollTop = object.scrollHeight')
-			time.sleep(1)
-			soup = BeautifulSoup(browser.page_source, 'html.parser')
-
-		# Get followers
-		for element in soup.html.body.findAll('div', recursive=False)[2].div.findAll('a'):
-			if element.get('href')[0] == '/' and element.get('href')[-1] == "/": followers.append(element.get('href')[1:-1])
-		followers = list(set(followers))
         
+	# Quit browser
+	browser.quit()
+
     # Create log
 	history = {
         "TIMESTAMP": datetime.now().strftime("%m/%d/%Y %H:%M:%S"),
@@ -111,18 +81,12 @@ def run_analytics():
         "COUNT_FOLLOWERS": count_followers,
         "COUNT_FOLLOWS": count_following
     }
-	if followers != []:
-		history["FOLLOWERS_NEW"] = list(set(followers) - set(analytics["CURRENT"]))
-		history["FOLLOWERS_LOST"] = list(set(analytics["CURRENT"]) - set(followers))
+
 	analytics["HISTORY"].insert(0, history)
-	analytics["CURRENT"] = followers
 
     # Dump the log
 	with open('analytics.json', 'w') as f:
 	    json.dump(analytics, f)
-
-	# Quit browser
-	browser.quit()
 
 
 # ----------------------------------------
@@ -141,11 +105,11 @@ if __name__ == '__main__':
 
     # Check whether the JSON file exists, otherwise create it
 	if os.path.isfile('analytics.json') == False:
-		analytics = {"USER" : config['USER'], "CURRENT": [], "HISTORY": []}
+		analytics = {"USER" : config['USER'], "HISTORY": []}
 		with open('analytics.json', 'w') as f:
-			json.dump(analytics, f, indent=4)
+			json.dump(analytics, f, indent = 4)
 
-	print('Scrapping data from', config['USER'], 'account every day at', config['RUN_HOUR'], ':00 \n')
+	print('Scrapping data from "', config['USER'], '" account every day at', config['RUN_HOUR'], ': 00 \n')
 
 	while True:
 		# Scheduled, every day

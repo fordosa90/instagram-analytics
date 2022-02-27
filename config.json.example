@@ -1,6 +1,4 @@
 {
   "USER": "instagram",
-  "RUN_HOUR": 23,
-  "USERNAME": "test",
-  "PASSWORD": "test"
+  "RUN_HOUR": 23
 }
