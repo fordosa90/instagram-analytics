@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from ast import parse
+from sched import scheduler
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.action_chains import ActionChains
@@ -13,31 +15,36 @@ import json
 import time
 import os
 import re
+import sys
+import argparse
 
-
-config = None
-
-def validate_config():
+def validate_config(args):
     if config is None:
         return False
-    
+
     if 'USER' not in config:
         return False
-    
-    if 'RUN_HOUR' not in config:
+
+    if args.scheduled and 'RUN_HOUR' not in config:
         return False
+
+    if 'RUN_HOUR' in config:
+        if not str(config['RUN_HOUR']).isnumeric():
+            return False
+
+        if int(config['RUN_HOUR']) > 24:
+            return False
 
     return True
 
 def run_analytics():
-
     # Load JSON
 	with open('analytics.json') as f:
 		analytics = json.load(f)
 
 	if analytics['USER'] != config['USER']:
 		print('ERROR, selected user does not match user data in log')
-		raise RuntimeError('Wrong user log detected')
+		sys.exit()
 
     # Launch browser
 	options = webdriver.ChromeOptions()
@@ -55,13 +62,13 @@ def run_analytics():
 	soup = BeautifulSoup(browser.page_source, 'html.parser')
 
 	# Accept cookies if have to
-	dialog_savelogin = True if soup.html.find_all(string=re.compile('(Allow|Accept).*cookies')) else False
-	if dialog_savelogin:
+	dialog_cookies = True if soup.html.find_all(string=re.compile('(Allow|Accept).*cookies')) else False
+	if dialog_cookies:
 		try:
 			browser.find_element(By.XPATH, "//*[contains(text(), 'Only allow essential cookies')]").click()
 			time.sleep(1.5)
 		except Exception as e:
-			print ('Could not accept cookies')
+			vprint ('Could not accept cookies')
 
 	# Check whether account is private
 	private = True if soup.html.body.find('h2', string=re.compile('Private')) else False
@@ -91,35 +98,62 @@ def run_analytics():
 
 # ----------------------------------------
 #  Main
-# ----------------------------------------]
+# ----------------------------------------
 
-if __name__ == '__main__':
+def main(argv):
+	# Handle arguments
+	parser = argparse.ArgumentParser(description='This is a basic scraper for public instagram information of a chosen profile. If not defined otherwise by arguments, it executes once and immediately at invocation.')
+	parser.add_argument("-s", "--scheduled", help="use if need to run at configured hour", action="store_true")
+	parser.add_argument("-r", "--recursive", help="use if need to run recursively, once per day", action="store_true")
+	parser.add_argument("-v", "--verbose", help="Use if want to have additional information as output during runtime", action="store_true")
+	args = parser.parse_args()
+	
+	global vprint; vprint = print if args.verbose else lambda *a, **k: None
+	vprint('Chosen setting: Recursive', str(args.recursive))
+	vprint('Chosen setting: Scheduled', str(args.scheduled))
+	vprint('Chosen setting: Verbose', str(args.verbose))
 
-    # Open config values
-	if config is None:
-		with open('config.json', 'r') as f:
-			config = json.load(f)
-
-	if validate_config() is False:
-		raise RuntimeError("Wrong config file")
+	# Open config values
+	global config
+	with open('config.json', 'r') as f:
+		config = json.load(f)
+	if validate_config(args) is False:
+		print('The config file is not valid. Please verify before restart.')
+		sys.exit()
 
     # Check whether the JSON file exists, otherwise create it
 	if os.path.isfile('analytics.json') == False:
 		analytics = {"USER" : config['USER'], "HISTORY": []}
 		with open('analytics.json', 'w') as f:
 			json.dump(analytics, f, indent = 4)
+			vprint('Creating new Analytics dump file')
 
-	print('Scrapping data from "', config['USER'], '" account every day at', config['RUN_HOUR'], ': 00 \n')
+	vprint('Scrapping data from', config['USER'], 'account')
 
+	# If scheduled, check every minute whether it is time to run or not yet
+	if args.scheduled:
+		vprint("Scheduled, waiting to run at: ", config['RUN_HOUR'])
+		while datetime.now().hour != config['RUN_HOUR']:
+			time.sleep(60) 
+
+	# Run at least once, if recurrent then continuosly
 	while True:
-		# Scheduled, every day
-		if datetime.now().hour == config['RUN_HOUR']:
-			print(datetime.now().strftime("%Y-%m-%d")),
-			try:
-				run_analytics()
-				time.sleep(82800) # Sleep for 23 hours
-			except Exception as e:
-				print ('Error', e)
-				time.sleep(30) # Retry after 30s
-		else:
-			time.sleep(60) # Check every minute
+		vprint("Date and time:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+		try:
+			run_analytics()
+		except Exception as e:
+			print('Error', str(e))
+		
+		if args.recursive == False:
+			break
+		
+		vprint("Sleeping for 23 hours...")
+		time.sleep(82800) # Sleep for 23 hours
+
+#---------------------------
+# Guard against import behavior 
+#---------------------------
+
+if __name__ == '__main__':
+	main(sys.argv[1:])
